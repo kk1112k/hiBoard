@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.icia.web.dao.HiBoardDao">
+<!-- 
+resultMap 시작
+ -->
+<!-- 게시물 resultMap -->
+<resultMap id="hiBoardResultMap" type="com.icia.web.model.HiBoard">
+   <id column="HIBBS_SEQ" property="hiBbsSeq" />
+   <result column="USER_ID" property="userId" />
+   <result column="HIBBS_GROUP" property="hiBbsGroup" />
+   <result column="HIBBS_ORDER" property="hiBbsOrder" />
+   <result column="HIBBS_INDENT" property="hiBbsIndent" />
+   <result column="HIBBS_TITLE" property="hiBbsTitle" />
+   <result column="HIBBS_CONTENT" property="hiBbsContent" />
+   <result column="HIBBS_READ_CNT" property="hiBbsReadCnt" />
+   <result column="REG_DATE" property="regDate" />
+   <result column="USER_NAME" property="userName" />
+   <result column="USER_EMAIL" property="userEmail" />
+   <result column="HIBBS_PARENT" property="hiBbsParent" />
+</resultMap>
+
+<!-- 첨부파일 resultMap -->
+<resultMap id="hiBoardFileResultMap" type="com.icia.web.model.HiBoardFile">
+   <id column="HIBBS_SEQ" property="hiBbsSeq" />
+   <id column="FILE_SEQ" property="fileSeq" />
+   <result column="FILE_ORG_NAME" property="fileOrgName" />
+   <result column="FILE_NAME" property="fileName" />
+   <result column="FILE_EXT" property="fileExt" />
+   <result column="FILE_SIZE" property="fileSize" />
+   <result column="REG_DATE" property="regDate" />
+</resultMap>
+<!-- 
+resultMap 끝
+ -->
+
+<!-- 게시물 등록 -->
+<insert id="boardInsert"  parameterType="com.icia.web.model.HiBoard">
+<selectKey resultType="long" keyProperty="hiBbsSeq" order="BEFORE">
+   SELECT SEQ_HIBOARD_SEQ.NEXTVAL FROM DUAL
+</selectKey>
+INSERT INTO TBL_HIBOARD (
+    HIBBS_SEQ,
+    USER_ID,
+    HIBBS_GROUP,
+    HIBBS_ORDER,
+    HIBBS_INDENT,
+    HIBBS_TITLE,
+    HIBBS_CONTENT,
+    HIBBS_READ_CNT,
+    REG_DATE,
+    HIBBS_PARENT
+) VALUES (
+    #{hiBbsSeq},
+    #{userId},
+    #{hiBbsSeq},
+    #{hiBbsOrder},
+    #{hiBbsIndent},
+    #{hiBbsTitle},
+    #{hiBbsContent},
+    0,
+    SYSDATE,
+    0
+)
+</insert>
+
+<!-- 첨부파일 등록 -->
+<insert id="boardFileInsert"  parameterType="com.icia.web.model.HiBoardFile">
+INSERT INTO TBL_HIBOARD_FILE (
+    HIBBS_SEQ,
+    FILE_SEQ,
+    FILE_ORG_NAME,
+    FILE_NAME,
+    FILE_EXT,
+    FILE_SIZE,
+    REG_DATE
+) VALUES (
+    #{hiBbsSeq},
+    1,
+    #{fileOrgName},
+    #{fileName},
+    #{fileExt},
+    #{fileSize},
+    SYSDATE
+)
+</insert>
+
+<!-- 총 게시물 수 -->
+<select id="boardListCount" parameterType="com.icia.web.model.HiBoard" resultType="long">
+SELECT
+    COUNT(A.HIBBS_SEQ) AS CNT
+FROM
+    TBL_HIBOARD A, TBL_USER B
+WHERE 
+    B.USER_ID = A.USER_ID
+<if test='searchType != null and searchType != "" and searchValue != null and searchValue != ""'>
+   <choose> 
+      <when test='searchType == "1"'>  
+  AND
+    B.USER_NAME LIKE '%' || #{searchValue} || '%'
+       </when>
+       <when test='searchType == "2"'>
+  AND
+    A.HIBBS_TITLE LIKE '%' || #{searchValue} || '%'
+       </when>
+       <when test='searchType == "3"'>
+  AND
+    DBMS_LOB.INSTR(A.HIBBS_CONTENT, #{searchValue}) > 0
+       </when>
+    </choose>
+</if>     
+</select>
+
+<!-- 게시물 리스트 -->
+<select id="boardList" parameterType="com.icia.web.model.HiBoard" resultMap="hiBoardResultMap">
+SELECT 
+    HIBBS_SEQ,
+    USER_ID,
+    USER_NAME,
+    USER_EMAIL,
+    HIBBS_GROUP,
+    HIBBS_ORDER,
+    HIBBS_INDENT,
+    HIBBS_TITLE,
+    HIBBS_CONTENT,
+    HIBBS_READ_CNT,
+    REG_DATE,
+    HIBBS_PARENT
+  FROM (SELECT  ROWNUM AS RNUM,
+                HIBBS_SEQ,
+                USER_ID,
+                USER_NAME,
+                USER_EMAIL,
+                HIBBS_GROUP,
+                HIBBS_ORDER,
+                HIBBS_INDENT,
+                HIBBS_TITLE,
+                HIBBS_CONTENT,
+                HIBBS_READ_CNT,
+                REG_DATE,
+                HIBBS_PARENT
+              FROM (SELECT  A.HIBBS_SEQ AS HIBBS_SEQ,
+                            NVL(A.USER_ID, '') AS USER_ID,
+                            NVL(B.USER_NAME, '') AS USER_NAME,
+                            NVL(B.USER_EMAIL, '') AS USER_EMAIL,
+                            NVL(A.HIBBS_GROUP, 0) AS HIBBS_GROUP,
+                            NVL(A.HIBBS_ORDER, 0) AS HIBBS_ORDER,
+                            NVL(A.HIBBS_INDENT, 0) AS HIBBS_INDENT,
+                            NVL(A.HIBBS_TITLE, '') AS HIBBS_TITLE,
+                            NVL(A.HIBBS_CONTENT, '') AS HIBBS_CONTENT,
+                            NVL(A.HIBBS_READ_CNT, 0) AS HIBBS_READ_CNT,
+                            NVL(TO_CHAR(A.REG_DATE, 'YYYY.MM.DD HH24:MI:SS'), '') AS REG_DATE,
+                            NVL(A.HIBBS_PARENT, 0) AS HIBBS_PARENT
+                        FROM
+                            TBL_HIBOARD A, TBL_USER B
+                        WHERE 
+                            B.USER_ID = A.USER_ID
+                            
+<if test='searchType != null and searchType != "" and searchValue != null and searchValue != ""'>
+   <choose>
+      <when test='searchType == "1"'>                               
+                          AND
+                            B.USER_NAME LIKE '%'|| #{searchValue} ||'%'
+      </when>    
+      <when test='searchType == "2"'>                  
+                          AND
+                            A.HIBBS_TITLE LIKE '%'|| #{searchValue} ||'%'
+      </when>        
+      <when test='searchType == "3"'>                   
+                          AND
+                            DBMS_LOB.INSTR(A.HIBBS_CONTENT, #{searchValue}) > 0
+      </when>                       
+   </choose>                            
+</if>
+                            
+                        ORDER BY A.HIBBS_GROUP DESC, A.HIBBS_ORDER ASC)) 
+ WHERE RNUM <![CDATA[>=]]> #{startRow}
+   AND RNUM <![CDATA[<=]]> #{endRow}
+</select>
+
+<!-- 게시물 조회 -->
+<select id="boardSelect" parameterType="long" resultMap="hiBoardResultMap">
+SELECT
+    A.HIBBS_SEQ AS HIBBS_SEQ,
+    NVL(A.USER_ID, '') AS USER_ID,
+    NVL(B.USER_NAME, '') AS USER_NAME,
+    NVL(B.USER_EMAIL, '') AS USER_EMAIL,
+    NVL(A.HIBBS_GROUP, 0) AS HIBBS_GROUP,
+    NVL(A.HIBBS_ORDER, 0) AS HIBBS_ORDER,
+    NVL(A.HIBBS_INDENT, 0) AS HIBBS_INDENT,
+    NVL(A.HIBBS_TITLE, '') AS HIBBS_TITLE,
+    NVL(A.HIBBS_CONTENT, '') AS HIBBS_CONTENT,
+    NVL(A.HIBBS_READ_CNT, 0) AS HIBBS_READ_CNT,
+    NVL(TO_CHAR(A.REG_DATE, 'YYYY.MM.DD HH24:MI:SS'), '') AS REG_DATE,
+    NVL(A.HIBBS_PARENT, 0) AS HIBBS_PARENT
+FROM
+    TBL_HIBOARD A, TBL_USER B
+WHERE   
+    A.HIBBS_SEQ = #{value}
+  AND   
+    A.USER_ID = B.USER_ID
+</select>
+
+<!-- 게시물 조회수 증가 -->
+<update id="boardReadCntPlus" parameterType="long">
+UPDATE TBL_HIBOARD
+   SET HIBBS_READ_CNT = HIBBS_READ_CNT + 1
+ WHERE HIBBS_SEQ = #{value}
+</update>
+
+<!-- 첨부파일 조회 -->
+<select id="boardFileSelect" parameterType="long" resultMap="hiBoardFileResultMap">
+SELECT
+    HIBBS_SEQ,
+    FILE_SEQ,
+    NVL(FILE_ORG_NAME, '') AS FILE_ORG_NAME,
+    NVL(FILE_NAME, '') AS FILE_NAME,
+    NVL(FILE_EXT, '') AS FILE_EXT,
+    NVL(FILE_SIZE, 0) AS FILE_SIZE,
+    NVL(TO_CHAR(REG_DATE, 'YYYY.MM.DD HH24:MI:SS'), '') AS REG_DATE
+FROM
+    TBL_HIBOARD_FILE
+WHERE 
+    HIBBS_SEQ = #{value}
+  AND
+    FILE_SEQ = 1
+</select>
+
+<!-- 게시물 삭제시 답변글 여부 체크 -->
+<select id="boardAnswersCount" parameterType="long" resultType="int">
+SELECT COUNT(HIBBS_SEQ) AS CNT
+  FROM TBL_HIBOARD
+ WHERE HIBBS_PARENT = #{value}
+</select>
+
+<!-- 게시물 삭제 -->
+<delete id="boardDelete" parameterType="long">
+DELETE FROM TBL_HIBOARD
+ WHERE
+       HIBBS_SEQ = #{value}
+</delete>
+
+<!-- 첨부파일 삭제 -->
+<delete id="boardFileDelete" parameterType="long">
+DELETE FROM TBL_HIBOARD_FILE
+ WHERE
+       HIBBS_SEQ = #{value}
+</delete>
+
+<!-- 게시물 수정 -->
+<update id="boardUpdate" parameterType="com.icia.web.model.HiBoard">
+UPDATE TBL_HIBOARD
+SET HIBBS_TITLE = #{hiBbsTitle},
+    HIBBS_CONTENT = #{hiBbsContent}
+WHERE
+    HIBBS_SEQ = #{hiBbsSeq}
+</update>
+
+<!-- HIBBS_GROUP의 HIBBS_ORDER 수정 -->
+<update id="boardGroupOrderUpdate" parameterType="com.icia.web.model.HiBoard">
+UPDATE TBL_HIBOARD
+   SET HIBBS_ORDER = HIBBS_ORDER + 1
+ WHERE HIBBS_GROUP = #{hiBbsGroup}
+   AND HIBBS_ORDER <![CDATA[>=]]> #{hiBbsOrder}
+</update>
+
+<!-- 게시물 답글 등록 -->
+<insert id="boardReplyInsert" parameterType="com.icia.web.model.HiBoard">
+<selectKey resultType="long" keyProperty="hiBbsSeq" order="BEFORE">
+   SELECT SEQ_HIBOARD_SEQ.NEXTVAL FROM DUAL
+</selectKey>
+INSERT INTO TBL_HIBOARD (
+    HIBBS_SEQ,
+    USER_ID,
+    HIBBS_GROUP,
+    HIBBS_ORDER,
+    HIBBS_INDENT,
+    HIBBS_TITLE,
+    HIBBS_CONTENT,
+    HIBBS_READ_CNT,
+    REG_DATE,
+    HIBBS_PARENT
+) VALUES (
+    #{hiBbsSeq},
+    #{userId},
+    #{hiBbsGroup},
+    #{hiBbsOrder},
+    #{hiBbsIndent},
+    #{hiBbsTitle},
+    #{hiBbsContent},
+    0,
+    SYSDATE,
+    #{hiBbsParent}
+)
+</insert>
+
+</mapper>
+
+
+
+
+
+
+
+
+

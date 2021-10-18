@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.icia.web.dao.UserDao">
+
+<resultMap type="com.icia.web.model.User" id="userResultMap">
+	<id column="USER_ID" property="userId" />
+	<result column="USER_PWD" property="userPwd" />
+	<result column="USER_NAME" property="userName" />
+	<result column="USER_EMAIL" property="userEmail" /> 
+	<result column="STATUS" property="status" />
+	<result column="REG_DATE" property="regDate" /> 
+</resultMap>
+
+<select id="userSelect" parameterType="string" resultMap="userResultMap">
+SELECT
+    USER_ID,
+    NVL(USER_PWD, '') AS USER_PWD,
+    NVL(USER_NAME, '') AS USER_NAME,
+    NVL(USER_EMAIL, '') AS USER_EMAIL,
+    NVL(STATUS, 'N') AS STATUS,
+    NVL(TO_CHAR(REG_DATE, 'YYYY.MM.DD HH24:MI:SS'), '') AS REG_DATE
+  FROM
+    TBL_USER
+ WHERE
+    USER_ID = #{value}
+</select>
+
+<insert id="userInsert" parameterType="com.icia.web.model.User">
+INSERT INTO TBL_USER (
+    USER_ID,
+    USER_PWD,
+    USER_NAME,
+    USER_EMAIL,
+    STATUS,
+    REG_DATE)
+VALUES (
+    #{userId},
+    #{userPwd},
+    #{userName},
+    #{userEmail},
+    #{status},
+    SYSDATE )
+</insert>
+
+<update id="userUpdate" parameterType="com.icia.web.model.User">
+UPDATE TBL_USER
+SET
+   USER_PWD = #{userPwd},
+   USER_NAME = #{userName},
+   USER_EMAIL = #{userEmail}
+WHERE
+   USER_ID = #{userId}
+</update>
+
+</mapper>
+
+
+
+
+
+
